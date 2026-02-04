@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AP Car Detailing - Premium Mobile Detailing Service</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Hero Section -->
+    <header class="hero">
+        <div class="container">
+            <h1 class="hero-title">AP Car Detailing</h1>
+            <p class="hero-subtitle">Premium Mobile Detailing at Your Location</p>
+        </div>
+    </header>
+
+    <!-- Services Section -->
+    <section class="services-section">
+        <div class="container">
+            <h2 class="section-title">Our Services</h2>
+            <div class="services-grid" id="servicesGrid">
+                <!-- Services will be dynamically loaded here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Booking Section -->
+    <section class="booking-section">
+        <div class="container">
+            <h2 class="section-title">Book Your Detailing</h2>
+            
+            <!-- Location Section -->
+            <div class="location-card">
+                <h3>Your Location</h3>
+                <div class="location-inputs">
+                    <div class="input-group">
+                        <label for="addressInput">Enter Your Address</label>
+                        <input 
+                            type="text" 
+                            id="addressInput" 
+                            placeholder="123 Main St, Dallas, TX"
+                            class="form-input"
+                        >
+                    </div>
+                    <button id="useCurrentLocation" class="btn-secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        Use Current Location
+                    </button>
+                </div>
+                <div id="locationStatus" class="location-status"></div>
+                <div id="map" class="map-container"></div>
+            </div>
+
+            <!-- Booking Form -->
+            <form id="bookingForm" class="booking-form">
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="serviceSelect">Select Service *</label>
+                        <select id="serviceSelect" class="form-input" required>
+                            <option value="">Choose a service...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="dateInput">Date *</label>
+                        <input 
+                            type="date" 
+                            id="dateInput" 
+                            class="form-input" 
+                            required
+                        >
+                    </div>
+                    <div class="input-group">
+                        <label for="timeInput">Time *</label>
+                        <select id="timeInput" class="form-input" required>
+                            <option value="">Select time...</option>
+                            <option value="08:00">8:00 AM</option>
+                            <option value="09:00">9:00 AM</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="11:00">11:00 AM</option>
+                            <option value="12:00">12:00 PM</option>
+                            <option value="13:00">1:00 PM</option>
+                            <option value="14:00">2:00 PM</option>
+                            <option value="15:00">3:00 PM</option>
+                            <option value="16:00">4:00 PM</option>
+                            <option value="17:00">5:00 PM</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="nameInput">Full Name *</label>
+                        <input 
+                            type="text" 
+                            id="nameInput" 
+                            class="form-input" 
+                            placeholder="John Doe"
+                            required
+                        >
+                    </div>
+                    <div class="input-group">
+                        <label for="phoneInput">Phone Number *</label>
+                        <input 
+                            type="tel" 
+                            id="phoneInput" 
+                            class="form-input" 
+                            placeholder="(555) 123-4567"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="notesInput">Additional Notes (Optional)</label>
+                    <textarea 
+                        id="notesInput" 
+                        class="form-input" 
+                        rows="4"
+                        placeholder="Any special requests or vehicle details..."
+                    ></textarea>
+                </div>
+
+                <div id="errorMessage" class="error-message"></div>
+                <div id="successMessage" class="success-message"></div>
+
+                <button type="submit" id="submitBtn" class="btn-primary">
+                    Book Appointment
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module" src="script.js"></script>
+    
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAxB2l_nyQR0aitOR9H8JHAEzmFkThFU48&libraries=places" async defer></script>
+</body>
+</html>
