@@ -9,7 +9,7 @@ import {
     getDocs,
     serverTimestamp 
 } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MapPin, Calendar, Clock, User, Phone, Mail, MessageSquare } from 'lucide-react';
 import './styles.css';
 
 // Firebase configuration
@@ -62,9 +62,9 @@ const services = [
 const centerLocation = { lat: 33.172384, lng: -96.713600 };
 
 export default function App() {
-    const [selectedService, setSelectedService] = useState<any>(null);
+    const [selectedService, setSelectedService] = useState<any>(services[0]); // Pre-select Basic Wash
     const [currentLocation, setCurrentLocation] = useState(centerLocation);
-    const [formStep, setFormStep] = useState(1); // 1: service selection, 2: booking details
+    const [formStep, setFormStep] = useState(1);
     const [formData, setFormData] = useState({
         date: '',
         time: '',
@@ -81,75 +81,80 @@ export default function App() {
     
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<google.maps.Map | null>(null);
-    const markerRef = useRef<google.maps.Marker | null>(null);
+    const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
     const geocoderRef = useRef<google.maps.Geocoder | null>(null);
-    const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+    const placeAutocompleteRef = useRef<HTMLElement | null>(null);
     const addressInputRef = useRef<HTMLInputElement>(null);
 
     // Initialize Google Maps
     useEffect(() => {
-        const initMap = () => {
+        const initMap = async () => {
             if (!mapRef.current || !window.google) return;
 
-            geocoderRef.current = new google.maps.Geocoder();
+            const { Map } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
+            const { AdvancedMarkerElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
+            const { Geocoder } = await google.maps.importLibrary("geocoding") as google.maps.GeocodingLibrary;
 
-            mapInstanceRef.current = new google.maps.Map(mapRef.current, {
+            geocoderRef.current = new Geocoder();
+
+            mapInstanceRef.current = new Map(mapRef.current, {
                 center: centerLocation,
                 zoom: 12,
-                mapTypeControl: false, // Disable satellite view toggle
-                streetViewControl: false, // Disable street view
-                fullscreenControl: false, // Disable fullscreen
-                clickableIcons: false, // Disable clicking on map icons
-                gestureHandling: 'greedy', // Allow zooming and panning
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: false,
+                clickableIcons: false,
+                gestureHandling: 'greedy',
+                mapId: 'AP_DETAILS_MAP', // Required for AdvancedMarkerElement
                 styles: [
-                    { elementType: "geometry", stylers: [{ color: "#212121" }] },
+                    { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
                     { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-                    { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-                    { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
-                    { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#757575" }] },
-                    { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-                    { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#2c2c2c" }] },
-                    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
-                    { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
-                    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3d3d3d" }] }
+                    { elementType: "labels.text.fill", stylers: [{ color: "#666666" }] },
+                    { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
+                    { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#e0e0e0" }] },
+                    { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#999999" }] },
+                    { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#ffffff" }] },
+                    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#999999" }] },
+                    { featureType: "water", elementType: "geometry", stylers: [{ color: "#e8e8e8" }] },
+                    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#999999" }] }
                 ]
             });
 
-            markerRef.current = new google.maps.Marker({
-                position: centerLocation,
+            // Create custom marker element
+            const markerElement = document.createElement('div');
+            markerElement.style.width = '20px';
+            markerElement.style.height = '20px';
+            markerElement.style.borderRadius = '50%';
+            markerElement.style.backgroundColor = '#ff6b9d';
+            markerElement.style.border = '2px solid #ffffff';
+            markerElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+
+            markerRef.current = new AdvancedMarkerElement({
                 map: mapInstanceRef.current,
-                title: 'Service Location',
-                animation: google.maps.Animation.DROP,
-                draggable: false,
-                icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 12,
-                    fillColor: '#ff1493',
-                    fillOpacity: 1,
-                    strokeColor: '#ffffff',
-                    strokeWeight: 3,
-                }
+                position: centerLocation,
+                content: markerElement,
+                title: 'Service Location'
             });
             
-            // Initialize Google Places Autocomplete on address input
+            // Initialize Place Autocomplete Element
             if (addressInputRef.current) {
-                autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
-                    componentRestrictions: { country: 'us' },
-                    fields: ['formatted_address', 'geometry']
+                const { PlaceAutocompleteElement } = await google.maps.importLibrary("places") as google.maps.PlacesLibrary;
+                
+                const placeAutocomplete = new PlaceAutocompleteElement({
+                    componentRestrictions: { country: 'us' }
                 });
-
-                // Listen for place selection from autocomplete
-                autocompleteRef.current.addListener('place_changed', () => {
-                    const place = autocompleteRef.current?.getPlace();
+                
+                placeAutocomplete.addEventListener('gmp-placeselect', async (event: any) => {
+                    const place = event.place;
                     
-                    if (place && place.geometry && place.geometry.location) {
-                        const lat = place.geometry.location.lat();
-                        const lng = place.geometry.location.lng();
+                    if (place && place.location) {
+                        const lat = place.location.lat();
+                        const lng = place.location.lng();
                         const distance = calculateDistance(centerLocation.lat, centerLocation.lng, lat, lng);
 
                         if (distance > 50) {
                             setLocationStatus({ 
-                                message: `Location too far (${Math.round(distance)} miles). We service within 50 miles.`, 
+                                message: `Location is ${Math.round(distance)} miles away. We service within 50 miles.`, 
                                 type: 'error' 
                             });
                             setFormData(prev => ({ ...prev, address: '' }));
@@ -160,33 +165,44 @@ export default function App() {
                         setCurrentLocation(newLocation);
                         updateMapLocation(newLocation);
                         setLocationStatus({ 
-                            message: `Address verified! ${Math.round(distance)} miles from our center.`, 
+                            message: `Perfect! ${Math.round(distance)} miles from our center.`, 
                             type: 'success' 
                         });
                         
-                        if (place.formatted_address) {
-                            setFormData(prev => ({ ...prev, address: place.formatted_address! }));
+                        if (place.formattedAddress) {
+                            setFormData(prev => ({ ...prev, address: place.formattedAddress! }));
+                            if (addressInputRef.current) {
+                                addressInputRef.current.value = place.formattedAddress;
+                            }
                         }
                     }
                 });
+
+                // Style the autocomplete element
+                placeAutocomplete.style.width = '100%';
+                
+                // Replace input with autocomplete element
+                const container = addressInputRef.current.parentElement;
+                if (container) {
+                    addressInputRef.current.style.display = 'none';
+                    container.insertBefore(placeAutocomplete, addressInputRef.current);
+                    placeAutocompleteRef.current = placeAutocomplete;
+                }
             }
-            
-            // Prevent clicking on map to place marker - map is read-only except for pan/zoom
         };
 
         if (window.google && window.google.maps) {
             initMap();
         } else {
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAxB2l_nyQR0aitOR9H8JHAEzmFkThFU48&libraries=places`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAxB2l_nyQR0aitOR9H8JHAEzmFkThFU48&libraries=places,marker&loading=async`;
             script.async = true;
             script.defer = true;
-            script.onload = initMap;
+            script.onload = () => initMap();
             document.head.appendChild(script);
         }
     }, []);
 
-    // Set minimum date
     const today = new Date().toISOString().split('T')[0];
 
     const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -226,7 +242,7 @@ export default function App() {
 
                 if (distance > 50) {
                     setLocationStatus({ 
-                        message: `Location too far (${Math.round(distance)} miles from service area). We service within 50 miles of our location.`, 
+                        message: `You're ${Math.round(distance)} miles away. We service within 50 miles.`, 
                         type: 'error' 
                     });
                     return;
@@ -236,7 +252,7 @@ export default function App() {
                 setCurrentLocation(newLocation);
                 updateMapLocation(newLocation);
                 setLocationStatus({ 
-                    message: `Location set! You are ${Math.round(distance)} miles from our center.`, 
+                    message: `Perfect! You are ${Math.round(distance)} miles from our center.`, 
                     type: 'success' 
                 });
 
@@ -244,6 +260,9 @@ export default function App() {
                     geocoderRef.current.geocode({ location: newLocation }, (results, status) => {
                         if (status === 'OK' && results && results[0]) {
                             setFormData(prev => ({ ...prev, address: results[0].formatted_address }));
+                            if (addressInputRef.current) {
+                                addressInputRef.current.value = results[0].formatted_address;
+                            }
                         }
                     });
                 }
@@ -282,7 +301,7 @@ export default function App() {
 
                 if (distance > 50) {
                     setLocationStatus({ 
-                        message: `Location too far (${Math.round(distance)} miles). We service within 50 miles.`, 
+                        message: `Location is ${Math.round(distance)} miles away. We service within 50 miles.`, 
                         type: 'error' 
                     });
                     setFormData(prev => ({ ...prev, address: '' }));
@@ -293,7 +312,7 @@ export default function App() {
                 setCurrentLocation(newLocation);
                 updateMapLocation(newLocation);
                 setLocationStatus({ 
-                    message: `Address verified! ${Math.round(distance)} miles from our center.`, 
+                    message: `Perfect! ${Math.round(distance)} miles from our center.`, 
                     type: 'success' 
                 });
             } else {
@@ -334,6 +353,11 @@ export default function App() {
             return;
         }
 
+        if (!formData.name || !formData.phone) {
+            setErrorMessage('Please fill in all required fields.');
+            return;
+        }
+
         const phoneRegex = /[\d\(\)\-\s]{10,}/;
         if (!phoneRegex.test(formData.phone)) {
             setErrorMessage('Please enter a valid phone number.');
@@ -352,23 +376,16 @@ export default function App() {
             }
 
             const bookingData = {
-                // Service Information
                 service: selectedService.name,
                 serviceId: selectedService.id,
                 servicePrice: selectedService.price,
                 serviceDuration: selectedService.duration,
                 serviceDescription: selectedService.description,
-                
-                // Appointment Details
                 appointmentDate: formData.date,
                 appointmentTime: formData.time,
-                
-                // Customer Information
                 customerName: formData.name,
                 customerPhone: formData.phone,
                 customerEmail: formData.email || '',
-                
-                // Location Details
                 serviceAddress: formData.address,
                 locationLatitude: currentLocation.lat,
                 locationLongitude: currentLocation.lng,
@@ -378,19 +395,11 @@ export default function App() {
                     currentLocation.lat,
                     currentLocation.lng
                 ),
-                
-                // Additional Information
                 specialRequests: formData.notes,
-                
-                // Booking Status
-                status: 'pending', // pending, confirmed, in-progress, completed, cancelled
-                paymentStatus: 'unpaid', // unpaid, paid, refunded
-                
-                // Timestamps
+                status: 'pending',
+                paymentStatus: 'unpaid',
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
-                
-                // Metadata
                 bookingSource: 'web',
                 version: '1.0'
             };
@@ -410,14 +419,16 @@ export default function App() {
                 return `${displayHour}:${minutes} ${ampm}`;
             };
 
-            setSuccessMessage(`Booking confirmed! We'll see you on ${formatDate(formData.date)} at ${formatTime(formData.time)}. We'll call ${formData.phone} to confirm.`);
+            setSuccessMessage(`🎉 Thank you, ${formData.name}! Your booking is confirmed for ${formatDate(formData.date)} at ${formatTime(formData.time)}. We'll see you soon!`);
 
             setTimeout(() => {
                 setFormData({ date: '', time: '', name: '', phone: '', email: '', notes: '', address: '' });
-                setSelectedService(null);
+                setSelectedService(services[0]);
+                setFormStep(1);
                 setErrorMessage('');
                 setSuccessMessage('');
-            }, 5000);
+                setCurrentLocation(centerLocation);
+            }, 8000);
 
         } catch (error) {
             console.error('Booking error:', error);
@@ -429,99 +440,108 @@ export default function App() {
 
     return (
         <div className="app">
-            {/* Hero Section */}
-            <header className="hero">
-                <div className="container">
-                    <h1 className="hero-title">AP Details</h1>
-                    <p className="hero-subtitle">Premium Mobile Detailing at Your Location</p>
-                </div>
-            </header>
-
-            {/* Booking Section - No separate services section */}
-            <section className="booking-section">
-                {/* Split Layout: Map Left, Form Right */}
-                <div className="booking-layout">
-                    {/* Left Side - Map */}
-                    <div className="map-side">
-                        <div ref={mapRef} className="map-container"></div>
-                        {locationStatus.message && (
-                            <div className={`location-status ${locationStatus.type}`}>
-                                {locationStatus.message}
-                            </div>
-                        )}
+            {/* Navigation */}
+            <nav className="nav">
+                <div className="nav-content">
+                    <div className="nav-logo">AP Details</div>
+                    <div className="nav-links">
+                        <a href="#services">Services</a>
+                        <a href="#contact">Contact Us</a>
+                        <a href="#booking" className="nav-link-accent">Book Now</a>
                     </div>
+                </div>
+            </nav>
 
-                    {/* Right Side - Multi-Step Form */}
-                    <div className="form-side">
+            {/* Hero Section */}
+            <section className="hero">
+                <div className="hero-content">
+                    <div className="trust-badge">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                        Trusted by over 70 clients
+                    </div>
+                    {/* Desktop: Logo Image */}
+                    <img 
+                        src="figma:asset/be0e3dc978f266c80efe805ad39b8a7d40b5a445.png" 
+                        alt="AP Details - Premium mobile detailing at your location"
+                        className="hero-logo-img"
+                    />
+                    {/* Mobile: Text fallback */}
+                    <h1 className="hero-title hero-title-mobile">
+                        Premium mobile detailing<br />
+                        at <span className="text-accent">your location</span>
+                    </h1>
+                    <p className="hero-subtitle">
+                        Professional car care that comes to you. Servicing within 50 miles.
+                    </p>
+                </div>
+            </section>
+
+            {/* Services Section */}
+            <section className="services" id="services">
+                <div className="services-intro">
+                    <h2 className="section-heading">Choose your <span className="text-accent">service</span></h2>
+                    <p className="section-subheading">Select the package that's right for your vehicle</p>
+                </div>
+                
+                <div className="services-list">
+                    {services.map((service, index) => (
+                        <div 
+                            key={service.id} 
+                            className={`service-item ${selectedService?.id === service.id ? 'selected' : ''}`}
+                            onClick={() => {
+                                setSelectedService(service);
+                                setFormStep(1);
+                            }}
+                        >
+                            <div className="service-header">
+                                <span className="service-number">{String(index + 1).padStart(2, '0')}</span>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <h3 className="service-name">{service.name}</h3>
+                                        {service.id === 'ultimate-package' && (
+                                            <span className="best-deal-badge">Best deal</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="service-details">
+                                <span className="service-price">${service.price}</span>
+                                <span className="service-duration">{service.duration}</span>
+                            </div>
+                            <p className="service-description">{service.description}</p>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            {/* Booking Section with Map */}
+            <section className="booking-section" id="booking">
+                <div className="booking-container">
+                    {/* Form on the LEFT */}
+                    <div className="booking-form-wrapper">
                         <form onSubmit={handleSubmit} className="booking-form">
-                            {/* Step 1: Service Selection */}
                             {formStep === 1 && (
                                 <>
-                                    <h3 className="form-title">Select Your Service</h3>
-                                    <p className="form-subtitle">Choose the detailing package that's right for you</p>
-                                    
-                                    <div className="services-grid-form">
-                                        {services.map(service => (
-                                            <div
-                                                key={service.id}
-                                                className={`service-card-form ${selectedService?.id === service.id ? 'selected' : ''}`}
-                                                onClick={() => setSelectedService(service)}
-                                            >
-                                                <h4 className="service-name-form">{service.name}</h4>
-                                                <div className="service-price-form">${service.price}</div>
-                                                <div className="service-duration-form">{service.duration}</div>
-                                                <p className="service-description-form">{service.description}</p>
+                                    <div className="form-header">
+                                        <h2 className="form-title">Book your <span className="text-accent">appointment</span></h2>
+                                        {selectedService && (
+                                            <div className="selected-service">
+                                                <span className="selected-label">Selected:</span>
+                                                <span className="selected-name">{selectedService.name}</span>
+                                                <span className="selected-price">${selectedService.price}</span>
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
 
-                                    {errorMessage && (
-                                        <div className="error-message show">{errorMessage}</div>
-                                    )}
-
-                                    <button 
-                                        type="button" 
-                                        className="btn-primary" 
-                                        onClick={() => {
-                                            if (!selectedService) {
-                                                setErrorMessage('Please select a service to continue.');
-                                                return;
-                                            }
-                                            setErrorMessage('');
-                                            setFormStep(2);
-                                        }}
-                                    >
-                                        Continue to Booking
-                                    </button>
-                                </>
-                            )}
-
-                            {/* Step 2: Booking Details */}
-                            {formStep === 2 && (
-                                <>
-                                    <div className="form-header-with-back">
-                                        <button 
-                                            type="button" 
-                                            className="btn-back" 
-                                            onClick={() => setFormStep(1)}
-                                        >
-                                            ← Back
-                                        </button>
-                                        <h3 className="form-title">Booking Details</h3>
-                                    </div>
-
-                                    {selectedService && (
-                                        <div className="selected-service-summary">
-                                            <strong>{selectedService.name}</strong> - ${selectedService.price}
-                                        </div>
-                                    )}
-                                    
-                                    {/* Location Input */}
-                                    <div className="input-group">
-                                        <label htmlFor="addressInput">Service Address</label>
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <MapPin size={18} />
+                                            Service address
+                                        </label>
                                         <input
                                             type="text"
-                                            id="addressInput"
                                             placeholder="Enter your address"
                                             className="form-input"
                                             value={formData.address}
@@ -529,24 +549,28 @@ export default function App() {
                                             onBlur={(e) => handleAddressChange(e.target.value)}
                                             ref={addressInputRef}
                                         />
+                                        <button 
+                                            type="button" 
+                                            onClick={handleUseCurrentLocation} 
+                                            className="location-btn"
+                                        >
+                                            Use my current location
+                                        </button>
+                                        {locationStatus.message && (
+                                            <div className={`location-status ${locationStatus.type}`}>
+                                                {locationStatus.message}
+                                            </div>
+                                        )}
                                     </div>
 
-                                    <button onClick={handleUseCurrentLocation} className="btn-secondary" type="button">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
-                                            <circle cx="12" cy="12" r="3"/>
-                                        </svg>
-                                        Use Current Location
-                                    </button>
-
-                                    <div className="form-divider"></div>
-
-                                    <div className="form-row-two">
-                                        <div className="input-group">
-                                            <label htmlFor="dateInput">Date</label>
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label className="form-label">
+                                                <Calendar size={18} />
+                                                Date
+                                            </label>
                                             <input
                                                 type="date"
-                                                id="dateInput"
                                                 className="form-input"
                                                 min={today}
                                                 value={formData.date}
@@ -554,10 +578,12 @@ export default function App() {
                                                 required
                                             />
                                         </div>
-                                        <div className="input-group">
-                                            <label htmlFor="timeInput">Time</label>
+                                        <div className="form-group">
+                                            <label className="form-label">
+                                                <Clock size={18} />
+                                                Time
+                                            </label>
                                             <select
-                                                id="timeInput"
                                                 className="form-input"
                                                 value={formData.time}
                                                 onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
@@ -573,26 +599,68 @@ export default function App() {
                                         </div>
                                     </div>
 
-                                    <div className="form-row-two">
-                                        <div className="input-group">
-                                            <label htmlFor="nameInput">Full Name</label>
+                                    <button 
+                                        type="button" 
+                                        className="btn-primary" 
+                                        onClick={() => {
+                                            if (!selectedService) {
+                                                setErrorMessage('Please select a service first.');
+                                                return;
+                                            }
+                                            if (!formData.address || !formData.date || !formData.time) {
+                                                setErrorMessage('Please fill in all required fields.');
+                                                return;
+                                            }
+                                            setErrorMessage('');
+                                            setFormStep(2);
+                                        }}
+                                    >
+                                        Continue
+                                    </button>
+
+                                    {errorMessage && (
+                                        <div className="error-message">{errorMessage}</div>
+                                    )}
+                                </>
+                            )}
+
+                            {formStep === 2 && (
+                                <>
+                                    <div className="form-header">
+                                        <button 
+                                            type="button" 
+                                            className="back-btn" 
+                                            onClick={() => setFormStep(1)}
+                                        >
+                                            ← Back
+                                        </button>
+                                        <h2 className="form-title">Your <span className="text-accent">details</span></h2>
+                                    </div>
+
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label className="form-label">
+                                                <User size={18} />
+                                                Full name
+                                            </label>
                                             <input
                                                 type="text"
-                                                id="nameInput"
-                                                className="form-input"
                                                 placeholder="John Doe"
+                                                className="form-input"
                                                 value={formData.name}
                                                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                                                 required
                                             />
                                         </div>
-                                        <div className="input-group">
-                                            <label htmlFor="phoneInput">Phone Number</label>
+                                        <div className="form-group">
+                                            <label className="form-label">
+                                                <Phone size={18} />
+                                                Phone number
+                                            </label>
                                             <input
                                                 type="tel"
-                                                id="phoneInput"
-                                                className="form-input"
                                                 placeholder="(555) 123-4567"
+                                                className="form-input"
                                                 value={formData.phone}
                                                 onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                                                 required
@@ -600,60 +668,97 @@ export default function App() {
                                         </div>
                                     </div>
 
-                                    <div className="input-group">
-                                        <label htmlFor="emailInput">Email (Optional)</label>
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <Mail size={18} />
+                                            Email <span className="optional">(optional)</span>
+                                        </label>
                                         <input
                                             type="email"
-                                            id="emailInput"
+                                            placeholder="john@example.com"
                                             className="form-input"
-                                            placeholder="john.doe@example.com"
                                             value={formData.email}
                                             onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                                         />
                                     </div>
 
-                                    <div className="input-group">
-                                        <label htmlFor="notesInput">Additional Notes (Optional)</label>
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <MessageSquare size={18} />
+                                            Special requests <span className="optional">(optional)</span>
+                                        </label>
                                         <textarea
-                                            id="notesInput"
-                                            className="form-input"
                                             rows={4}
-                                            placeholder="Special requests, vehicle details, etc."
+                                            placeholder="Any specific requests or vehicle details..."
+                                            className="form-input"
                                             value={formData.notes}
                                             onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                                         />
                                     </div>
 
                                     {errorMessage && (
-                                        <div className="error-message show">{errorMessage}</div>
+                                        <div className="error-message">{errorMessage}</div>
                                     )}
                                     {successMessage && (
-                                        <div className="success-message show">{successMessage}</div>
+                                        <div className="success-message">{successMessage}</div>
                                     )}
 
                                     <button type="submit" className="btn-primary" disabled={isLoading}>
                                         {isLoading ? (
                                             <>
-                                                <Loader2 className="spinner-icon" />
+                                                <Loader2 className="spinner" size={20} />
                                                 Processing...
                                             </>
                                         ) : (
-                                            'Book Appointment'
+                                            'Confirm booking'
                                         )}
                                     </button>
                                 </>
                             )}
                         </form>
                     </div>
+
+                    {/* Map on the RIGHT - Full Width */}
+                    <div className="map-wrapper">
+                        <div ref={mapRef} className="map"></div>
+                    </div>
                 </div>
             </section>
 
-            {/* Loading Overlay */}
-            {isLoading && (
-                <div className="loading-overlay show">
-                    <div className="spinner"></div>
+            {/* Footer */}
+            <footer className="footer" id="contact">
+                <div className="footer-content">
+                    <div className="footer-brand">
+                        <h3 className="footer-logo">AP Details</h3>
+                        <p className="footer-tagline">Premium mobile detailing</p>
+                    </div>
+                    <div className="footer-social">
+                        <a 
+                            href="https://www.instagram.com/ap.details.ntx/" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="social-link"
+                            aria-label="Follow us on Instagram"
+                        >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                            </svg>
+                        </a>
+                        <a 
+                            href="https://www.tiktok.com/@ap.details.ntx" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="social-link"
+                            aria-label="Follow us on TikTok"
+                        >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                            </svg>
+                        </a>
+                    </div>
+                    <p className="footer-copyright">© 2026 AP Details. All rights reserved.</p>
                 </div>
-            )}
+            </footer>
         </div>
     );
 }
