@@ -89,116 +89,125 @@ export default function App() {
     // Initialize Google Maps
     useEffect(() => {
         const initMap = async () => {
-            if (!mapRef.current || !window.google) return;
+            if (!mapRef.current || !window.google?.maps) return;
 
-            const { Map } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
-            const { AdvancedMarkerElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
-            const { Geocoder } = await google.maps.importLibrary("geocoding") as google.maps.GeocodingLibrary;
+            try {
+                const { Map } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
+                const { AdvancedMarkerElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
+                const { Geocoder } = await google.maps.importLibrary("geocoding") as google.maps.GeocodingLibrary;
 
-            geocoderRef.current = new Geocoder();
+                geocoderRef.current = new Geocoder();
 
-            mapInstanceRef.current = new Map(mapRef.current, {
-                center: centerLocation,
-                zoom: 12,
-                mapTypeControl: false,
-                streetViewControl: false,
-                fullscreenControl: false,
-                clickableIcons: false,
-                gestureHandling: 'greedy',
-                mapId: 'AP_DETAILS_MAP', // Required for AdvancedMarkerElement
-                styles: [
-                    { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
-                    { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-                    { elementType: "labels.text.fill", stylers: [{ color: "#666666" }] },
-                    { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
-                    { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#e0e0e0" }] },
-                    { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#999999" }] },
-                    { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#ffffff" }] },
-                    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#999999" }] },
-                    { featureType: "water", elementType: "geometry", stylers: [{ color: "#e8e8e8" }] },
-                    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#999999" }] }
-                ]
-            });
+                mapInstanceRef.current = new Map(mapRef.current, {
+                    center: centerLocation,
+                    zoom: 12,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    fullscreenControl: false,
+                    clickableIcons: false,
+                    gestureHandling: 'greedy',
+                    mapId: 'AP_DETAILS_MAP', // Required for AdvancedMarkerElement
+                    styles: [
+                        { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+                        { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+                        { elementType: "labels.text.fill", stylers: [{ color: "#666666" }] },
+                        { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
+                        { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#e0e0e0" }] },
+                        { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#999999" }] },
+                        { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#ffffff" }] },
+                        { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#999999" }] },
+                        { featureType: "water", elementType: "geometry", stylers: [{ color: "#e8e8e8" }] },
+                        { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#999999" }] }
+                    ]
+                });
 
-            // Create custom marker element
-            const markerElement = document.createElement('div');
-            markerElement.style.width = '20px';
-            markerElement.style.height = '20px';
-            markerElement.style.borderRadius = '50%';
-            markerElement.style.backgroundColor = '#ff6b9d';
-            markerElement.style.border = '2px solid #ffffff';
-            markerElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+                // Create custom marker element
+                const markerElement = document.createElement('div');
+                markerElement.style.width = '20px';
+                markerElement.style.height = '20px';
+                markerElement.style.borderRadius = '50%';
+                markerElement.style.backgroundColor = '#ff6b9d';
+                markerElement.style.border = '2px solid #ffffff';
+                markerElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
 
-            markerRef.current = new AdvancedMarkerElement({
-                map: mapInstanceRef.current,
-                position: centerLocation,
-                content: markerElement,
-                title: 'Service Location'
-            });
-            
-            // Initialize Place Autocomplete Element
-            if (addressInputRef.current) {
-                const { PlaceAutocompleteElement } = await google.maps.importLibrary("places") as google.maps.PlacesLibrary;
-                
-                const placeAutocomplete = new PlaceAutocompleteElement({
-                    componentRestrictions: { country: 'us' }
+                markerRef.current = new AdvancedMarkerElement({
+                    map: mapInstanceRef.current,
+                    position: centerLocation,
+                    content: markerElement,
+                    title: 'Service Location'
                 });
                 
-                placeAutocomplete.addEventListener('gmp-placeselect', async (event: any) => {
-                    const place = event.place;
+                // Initialize Place Autocomplete Element
+                if (addressInputRef.current) {
+                    const { PlaceAutocompleteElement } = await google.maps.importLibrary("places") as google.maps.PlacesLibrary;
                     
-                    if (place && place.location) {
-                        const lat = place.location.lat();
-                        const lng = place.location.lng();
-                        const distance = calculateDistance(centerLocation.lat, centerLocation.lng, lat, lng);
-
-                        if (distance > 50) {
-                            setLocationStatus({ 
-                                message: `Location is ${Math.round(distance)} miles away. We service within 50 miles.`, 
-                                type: 'error' 
-                            });
-                            setFormData(prev => ({ ...prev, address: '' }));
-                            return;
-                        }
-
-                        const newLocation = { lat, lng };
-                        setCurrentLocation(newLocation);
-                        updateMapLocation(newLocation);
-                        setLocationStatus({ 
-                            message: `Perfect! ${Math.round(distance)} miles from our center.`, 
-                            type: 'success' 
-                        });
+                    const placeAutocomplete = new PlaceAutocompleteElement({
+                        componentRestrictions: { country: 'us' }
+                    });
+                    
+                    placeAutocomplete.addEventListener('gmp-placeselect', async (event: any) => {
+                        const place = event.place;
                         
-                        if (place.formattedAddress) {
-                            setFormData(prev => ({ ...prev, address: place.formattedAddress! }));
-                            if (addressInputRef.current) {
-                                addressInputRef.current.value = place.formattedAddress;
+                        if (place && place.location) {
+                            const lat = place.location.lat();
+                            const lng = place.location.lng();
+                            const distance = calculateDistance(centerLocation.lat, centerLocation.lng, lat, lng);
+
+                            if (distance > 50) {
+                                setLocationStatus({ 
+                                    message: `Location is ${Math.round(distance)} miles away. We service within 50 miles.`, 
+                                    type: 'error' 
+                                });
+                                setFormData(prev => ({ ...prev, address: '' }));
+                                return;
+                            }
+
+                            const newLocation = { lat, lng };
+                            setCurrentLocation(newLocation);
+                            updateMapLocation(newLocation);
+                            setLocationStatus({ 
+                                message: `Perfect! ${Math.round(distance)} miles from our center.`, 
+                                type: 'success' 
+                            });
+                            
+                            if (place.formattedAddress) {
+                                setFormData(prev => ({ ...prev, address: place.formattedAddress! }));
+                                if (addressInputRef.current) {
+                                    addressInputRef.current.value = place.formattedAddress;
+                                }
                             }
                         }
-                    }
-                });
+                    });
 
-                // Style the autocomplete element
-                placeAutocomplete.style.width = '100%';
-                
-                // Replace input with autocomplete element
-                const container = addressInputRef.current.parentElement;
-                if (container) {
-                    addressInputRef.current.style.display = 'none';
-                    container.insertBefore(placeAutocomplete, addressInputRef.current);
-                    placeAutocompleteRef.current = placeAutocomplete;
+                    // Style the autocomplete element
+                    placeAutocomplete.style.width = '100%';
+                    placeAutocomplete.style.zIndex = '1';
+                    placeAutocomplete.style.position = 'relative';
+                    
+                    // Replace input with autocomplete element
+                    const container = addressInputRef.current.parentElement;
+                    if (container) {
+                        addressInputRef.current.style.display = 'none';
+                        container.insertBefore(placeAutocomplete, addressInputRef.current);
+                        placeAutocompleteRef.current = placeAutocomplete;
+                    }
                 }
+            } catch (error) {
+                console.error('Error initializing Google Maps:', error);
             }
         };
 
-        if (window.google && window.google.maps) {
+        if (window.google?.maps?.importLibrary) {
             initMap();
         } else {
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAxB2l_nyQR0aitOR9H8JHAEzmFkThFU48&libraries=places,marker&loading=async`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAxB2l_nyQR0aitOR9H8JHAEzmFkThFU48&libraries=places&loading=async&callback=Function.prototype`;
             script.async = true;
             script.defer = true;
-            script.onload = () => initMap();
+            script.onload = () => {
+                // Wait a bit for Google Maps to fully initialize
+                setTimeout(() => initMap(), 100);
+            };
             document.head.appendChild(script);
         }
     }, []);
@@ -353,11 +362,6 @@ export default function App() {
             return;
         }
 
-        if (!formData.name || !formData.phone) {
-            setErrorMessage('Please fill in all required fields.');
-            return;
-        }
-
         const phoneRegex = /[\d\(\)\-\s]{10,}/;
         if (!phoneRegex.test(formData.phone)) {
             setErrorMessage('Please enter a valid phone number.');
@@ -419,16 +423,15 @@ export default function App() {
                 return `${displayHour}:${minutes} ${ampm}`;
             };
 
-            setSuccessMessage(`🎉 Thank you, ${formData.name}! Your booking is confirmed for ${formatDate(formData.date)} at ${formatTime(formData.time)}. We'll see you soon!`);
+            setSuccessMessage(`Booking confirmed! We'll see you on ${formatDate(formData.date)} at ${formatTime(formData.time)}.`);
 
             setTimeout(() => {
                 setFormData({ date: '', time: '', name: '', phone: '', email: '', notes: '', address: '' });
-                setSelectedService(services[0]);
+                setSelectedService(null);
                 setFormStep(1);
                 setErrorMessage('');
                 setSuccessMessage('');
-                setCurrentLocation(centerLocation);
-            }, 8000);
+            }, 5000);
 
         } catch (error) {
             console.error('Booking error:', error);
@@ -461,13 +464,12 @@ export default function App() {
                         </svg>
                         Trusted by over 70 clients
                     </div>
-                    {/* Desktop: Logo Image */}
-                    <img 
-                        src="figma:asset/be0e3dc978f266c80efe805ad39b8a7d40b5a445.png" 
-                        alt="AP Details - Premium mobile detailing at your location"
-                        className="hero-logo-img"
-                    />
-                    {/* Mobile: Text fallback */}
+                    {/* Desktop: Logo/Text */}
+                    <h1 className="hero-title">
+                        Premium mobile detailing<br />
+                        at <span className="text-accent">your location</span>
+                    </h1>
+                    {/* Mobile: Same text */}
                     <h1 className="hero-title hero-title-mobile">
                         Premium mobile detailing<br />
                         at <span className="text-accent">your location</span>
@@ -525,7 +527,7 @@ export default function App() {
                             {formStep === 1 && (
                                 <>
                                     <div className="form-header">
-                                        <h2 className="form-title">Book your <span className="text-accent">appointment</span></h2>
+                                        <h2 className="form-title text-[rgb(255,255,255)]">Book your <span className="text-accent">appointment</span></h2>
                                         {selectedService && (
                                             <div className="selected-service">
                                                 <span className="selected-label">Selected:</span>
@@ -536,7 +538,7 @@ export default function App() {
                                     </div>
 
                                     <div className="form-group">
-                                        <label className="form-label">
+                                        <label className="form-label text-[rgb(255,255,255)]">
                                             <MapPin size={18} />
                                             Service address
                                         </label>
@@ -565,7 +567,7 @@ export default function App() {
 
                                     <div className="form-row">
                                         <div className="form-group">
-                                            <label className="form-label">
+                                            <label className="form-label text-[rgb(255,255,255)]">
                                                 <Calendar size={18} />
                                                 Date
                                             </label>
@@ -579,7 +581,7 @@ export default function App() {
                                             />
                                         </div>
                                         <div className="form-group">
-                                            <label className="form-label">
+                                            <label className="form-label text-[rgb(255,255,255)]">
                                                 <Clock size={18} />
                                                 Time
                                             </label>
