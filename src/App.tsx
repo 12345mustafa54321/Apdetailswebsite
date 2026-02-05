@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { Loader2, MapPin, Calendar, Clock, User, Phone, Mail, MessageSquare } from 'lucide-react';
 import './styles.css';
+import heroLogo from 'figma:asset/8ac00dbb913d177c7d2a825d140dd19b9b5b29e2.png';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -78,6 +79,9 @@ export default function App() {
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [submissionSuccess, setSubmissionSuccess] = useState(false);
+    const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<google.maps.Map | null>(null);
@@ -106,19 +110,8 @@ export default function App() {
                     fullscreenControl: false,
                     clickableIcons: false,
                     gestureHandling: 'greedy',
-                    mapId: 'AP_DETAILS_MAP', // Required for AdvancedMarkerElement
-                    styles: [
-                        { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
-                        { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-                        { elementType: "labels.text.fill", stylers: [{ color: "#666666" }] },
-                        { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
-                        { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#e0e0e0" }] },
-                        { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#999999" }] },
-                        { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#ffffff" }] },
-                        { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#999999" }] },
-                        { featureType: "water", elementType: "geometry", stylers: [{ color: "#e8e8e8" }] },
-                        { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#999999" }] }
-                    ]
+                    mapId: 'AP_DETAILS_MAP' // Required for AdvancedMarkerElement
+                    // Removed styles array - map styling is controlled via Cloud Console when mapId is present
                 });
 
                 // Create custom marker element
@@ -171,12 +164,20 @@ export default function App() {
                             });
                             
                             if (place.formattedAddress) {
+                                console.log('Setting address from place select:', place.formattedAddress);
                                 setFormData(prev => ({ ...prev, address: place.formattedAddress! }));
                                 if (addressInputRef.current) {
                                     addressInputRef.current.value = place.formattedAddress;
                                 }
                             }
                         }
+                    });
+
+                    // Listen for any input changes to capture manually typed addresses
+                    placeAutocomplete.addEventListener('input', (event: any) => {
+                        const inputValue = event.target?.value || '';
+                        console.log('Address input changed:', inputValue);
+                        setFormData(prev => ({ ...prev, address: inputValue }));
                     });
 
                     // Style the autocomplete element
@@ -242,6 +243,7 @@ export default function App() {
         }
 
         setLocationStatus({ message: 'Getting your location...', type: 'warning' });
+        setIsLoadingLocation(true);
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -254,6 +256,7 @@ export default function App() {
                         message: `You're ${Math.round(distance)} miles away. We service within 50 miles.`, 
                         type: 'error' 
                     });
+                    setIsLoadingLocation(false);
                     return;
                 }
 
@@ -264,6 +267,7 @@ export default function App() {
                     message: `Perfect! You are ${Math.round(distance)} miles from our center.`, 
                     type: 'success' 
                 });
+                setIsLoadingLocation(false);
 
                 if (geocoderRef.current) {
                     geocoderRef.current.geocode({ location: newLocation }, (results, status) => {
@@ -290,6 +294,7 @@ export default function App() {
                         break;
                 }
                 setLocationStatus({ message, type: 'error' });
+                setIsLoadingLocation(false);
             }
         );
     };
@@ -333,17 +338,21 @@ export default function App() {
     const checkAvailability = async (date: string, time: string) => {
         try {
             const bookingsRef = collection(db, "bookings");
+            // Simplified query to avoid composite index requirement
+            // We'll filter cancelled bookings in memory instead
             const q = query(
                 bookingsRef, 
                 where("appointmentDate", "==", date), 
-                where("appointmentTime", "==", time),
-                where("status", "!=", "cancelled")
+                where("appointmentTime", "==", time)
             );
             const querySnapshot = await getDocs(q);
-            return querySnapshot.empty;
+            
+            // Filter out cancelled bookings in memory
+            const activeBookings = querySnapshot.docs.filter(doc => doc.data().status !== 'cancelled');
+            return activeBookings.length === 0;
         } catch (error) {
             console.error('Error checking availability:', error);
-            return true;
+            return true; // Allow booking if there's an error checking availability
         }
     };
 
@@ -431,6 +440,7 @@ export default function App() {
                 setFormStep(1);
                 setErrorMessage('');
                 setSuccessMessage('');
+                setSubmissionSuccess(true);
             }, 5000);
 
         } catch (error) {
@@ -452,7 +462,23 @@ export default function App() {
                         <a href="#contact">Contact Us</a>
                         <a href="#booking" className="nav-link-accent">Book Now</a>
                     </div>
+                    <button 
+                        type="button"
+                        className="mobile-menu-toggle"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
                 </div>
+                {isMobileMenuOpen && (
+                    <div className="mobile-menu">
+                        <a href="#services" onClick={() => setIsMobileMenuOpen(false)}>Services</a>
+                        <a href="#contact" onClick={() => setIsMobileMenuOpen(false)}>Contact Us</a>
+                        <a href="#booking" className="nav-link-accent" onClick={() => setIsMobileMenuOpen(false)}>Book Now</a>
+                    </div>
+                )}
             </nav>
 
             {/* Hero Section */}
@@ -464,13 +490,10 @@ export default function App() {
                         </svg>
                         Trusted by over 70 clients
                     </div>
-                    {/* Desktop: Logo/Text */}
-                    <h1 className="hero-title">
-                        Premium mobile detailing<br />
-                        at <span className="text-accent">your location</span>
-                    </h1>
-                    {/* Mobile: Same text */}
-                    <h1 className="hero-title hero-title-mobile">
+                    {/* Desktop: Logo Image */}
+                    <img src={heroLogo} alt="AP Details Car Services" className="hero-logo-img" />
+                    {/* Mobile: Text */}
+                    <h1 className="hero-title-mobile">
                         Premium mobile detailing<br />
                         at <span className="text-accent">your location</span>
                     </h1>
@@ -523,201 +546,296 @@ export default function App() {
                 <div className="booking-container">
                     {/* Form on the LEFT */}
                     <div className="booking-form-wrapper">
-                        <form onSubmit={handleSubmit} className="booking-form">
-                            {formStep === 1 && (
+                        <div className="booking-form">
+                            {!submissionSuccess ? (
                                 <>
-                                    <div className="form-header">
-                                        <h2 className="form-title text-[rgb(255,255,255)]">Book your <span className="text-accent">appointment</span></h2>
-                                        {selectedService && (
-                                            <div className="selected-service">
-                                                <span className="selected-label">Selected:</span>
-                                                <span className="selected-name">{selectedService.name}</span>
-                                                <span className="selected-price">${selectedService.price}</span>
+                                    {formStep === 1 && (
+                                        <>
+                                            <div className="form-header">
+                                                <div className="form-step-indicator">
+                                                    <div className="step-dots">
+                                                        <div className="step-dot active"></div>
+                                                        <div className="step-dot"></div>
+                                                    </div>
+                                                    <span className="step-text">Step 1 of 2</span>
+                                                </div>
+                                                <h2 className="form-title">Let's plan your<br/>perfect detail</h2>
+                                                {selectedService && (
+                                                    <div className="selected-service-card">
+                                                        <div className="service-card-content">
+                                                            <span className="service-card-name">{selectedService.name}</span>
+                                                            <span className="service-card-price">${selectedService.price}</span>
+                                                        </div>
+                                                        <button 
+                                                            type="button"
+                                                            className="change-service-btn"
+                                                            onClick={() => {
+                                                                setSelectedService(null);
+                                                                document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' });
+                                                            }}
+                                                        >
+                                                            Change
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
 
-                                    <div className="form-group">
-                                        <label className="form-label text-[rgb(255,255,255)]">
-                                            <MapPin size={18} />
-                                            Service address
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="Enter your address"
-                                            className="form-input"
-                                            value={formData.address}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                                            onBlur={(e) => handleAddressChange(e.target.value)}
-                                            ref={addressInputRef}
-                                        />
-                                        <button 
-                                            type="button" 
-                                            onClick={handleUseCurrentLocation} 
-                                            className="location-btn"
-                                        >
-                                            Use my current location
-                                        </button>
-                                        {locationStatus.message && (
-                                            <div className={`location-status ${locationStatus.type}`}>
-                                                {locationStatus.message}
+                                            <div className="form-content">
+                                                {/* Address Input */}
+                                                <div className="form-field">
+                                                    <label className="field-label">
+                                                        <MapPin size={18} />
+                                                        Service Location
+                                                    </label>
+                                                    <div className="input-wrapper">
+                                                        <input
+                                                            ref={addressInputRef}
+                                                            type="text"
+                                                            className="modern-input"
+                                                            placeholder="Enter your address"
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={handleUseCurrentLocation}
+                                                        disabled={isLoadingLocation}
+                                                        className="link-button"
+                                                    >
+                                                        {isLoadingLocation ? (
+                                                            <>
+                                                                <Loader2 size={14} className="spinner" />
+                                                                Getting location...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <MapPin size={14} />
+                                                                Use current location
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                    {locationStatus.message && (
+                                                        <div className={`location-feedback ${locationStatus.type}`}>
+                                                            {locationStatus.message}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Date & Time Row */}
+                                                <div className="form-grid">
+                                                    <div className="form-field">
+                                                        <label className="field-label">
+                                                            <Calendar size={18} />
+                                                            Date
+                                                        </label>
+                                                        <input
+                                                            type="date"
+                                                            className="modern-input"
+                                                            min={today}
+                                                            value={formData.date}
+                                                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                                        />
+                                                    </div>
+
+                                                    <div className="form-field">
+                                                        <label className="field-label">
+                                                            <Clock size={18} />
+                                                            Time
+                                                        </label>
+                                                        <select
+                                                            className="modern-input"
+                                                            value={formData.time}
+                                                            onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                                                        >
+                                                            <option value="">Select time</option>
+                                                            {['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map(time => (
+                                                                <option key={time} value={time}>
+                                                                    {time.split(':')[0] > '12' ? `${parseInt(time.split(':')[0]) - 12}:00 PM` : `${time} ${time.split(':')[0] === '12' ? 'PM' : 'AM'}`}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <button 
+                                                    type="button" 
+                                                    className="modern-btn-primary" 
+                                                    onClick={() => {
+                                                        console.log('Continue button clicked');
+                                                        console.log('Selected Service:', selectedService);
+                                                        console.log('Form Data:', formData);
+                                                        console.log('Address value:', formData.address);
+                                                        console.log('Address length:', formData.address?.length);
+                                                        
+                                                        if (!selectedService) {
+                                                            setErrorMessage('Please select a service first.');
+                                                            return;
+                                                        }
+                                                        
+                                                        // Check each field individually for better error messages
+                                                        if (!formData.address || formData.address.trim() === '') {
+                                                            setErrorMessage('Please enter your service address or use current location.');
+                                                            return;
+                                                        }
+                                                        if (!formData.date) {
+                                                            setErrorMessage('Please select a date.');
+                                                            return;
+                                                        }
+                                                        if (!formData.time) {
+                                                            setErrorMessage('Please select a time.');
+                                                            return;
+                                                        }
+                                                        
+                                                        setErrorMessage('');
+                                                        setFormStep(2);
+                                                    }}
+                                                >
+                                                    Continue to contact details
+                                                </button>
+
+                                                {errorMessage && (
+                                                    <div className="error-feedback">{errorMessage}</div>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
+                                        </>
+                                    )}
 
-                                    <div className="form-row">
-                                        <div className="form-group">
-                                            <label className="form-label text-[rgb(255,255,255)]">
-                                                <Calendar size={18} />
-                                                Date
-                                            </label>
-                                            <input
-                                                type="date"
-                                                className="form-input"
-                                                min={today}
-                                                value={formData.date}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label className="form-label text-[rgb(255,255,255)]">
-                                                <Clock size={18} />
-                                                Time
-                                            </label>
-                                            <select
-                                                className="form-input"
-                                                value={formData.time}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
-                                                required
-                                            >
-                                                <option value="">Select time</option>
-                                                {['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'].map(time => (
-                                                    <option key={time} value={time}>
-                                                        {time.split(':')[0] > '12' ? `${parseInt(time.split(':')[0]) - 12}:00 PM` : `${time} ${time.split(':')[0] === '12' ? 'PM' : 'AM'}`}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
+                                    {formStep === 2 && (
+                                        <>
+                                            <div className="form-header">
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setFormStep(1)}
+                                                    className="back-link"
+                                                >
+                                                    ← Back
+                                                </button>
+                                                <div className="form-step-indicator">
+                                                    <div className="step-dots">
+                                                        <div className="step-dot completed"></div>
+                                                        <div className="step-dot active"></div>
+                                                    </div>
+                                                    <span className="step-text">Step 2 of 2</span>
+                                                </div>
+                                                <h2 className="form-title">Your contact<br/>information</h2>
+                                            </div>
 
+                                            <div className="form-content">
+                                                {/* Name */}
+                                                <div className="form-field">
+                                                    <label className="field-label">
+                                                        <User size={18} />
+                                                        Full Name
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        className="modern-input"
+                                                        placeholder="John Smith"
+                                                        value={formData.name}
+                                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                        required
+                                                    />
+                                                </div>
+
+                                                {/* Phone & Email Row */}
+                                                <div className="form-grid">
+                                                    <div className="form-field">
+                                                        <label className="field-label">
+                                                            <Phone size={18} />
+                                                            Phone
+                                                        </label>
+                                                        <input
+                                                            type="tel"
+                                                            className="modern-input"
+                                                            placeholder="(555) 123-4567"
+                                                            value={formData.phone}
+                                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                                            required
+                                                        />
+                                                    </div>
+
+                                                    <div className="form-field">
+                                                        <label className="field-label">
+                                                            <Mail size={18} />
+                                                            Email
+                                                            <span className="optional-badge">Optional</span>
+                                                        </label>
+                                                        <input
+                                                            type="email"
+                                                            className="modern-input"
+                                                            placeholder="john@example.com"
+                                                            value={formData.email}
+                                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Notes */}
+                                                <div className="form-field">
+                                                    <label className="field-label">
+                                                        <MessageSquare size={18} />
+                                                        Special Requests
+                                                        <span className="optional-badge">Optional</span>
+                                                    </label>
+                                                    <textarea
+                                                        className="modern-input modern-textarea"
+                                                        placeholder="Any special requests or notes..."
+                                                        rows={4}
+                                                        value={formData.notes}
+                                                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                                    />
+                                                </div>
+
+                                                <button 
+                                                    type="button"
+                                                    onClick={handleSubmit}
+                                                    disabled={isLoading}
+                                                    className="modern-btn-primary"
+                                                >
+                                                    {isLoading ? (
+                                                        <>
+                                                            <Loader2 size={20} className="spinner" />
+                                                            Confirming booking...
+                                                        </>
+                                                    ) : (
+                                                        'Confirm booking'
+                                                    )}
+                                                </button>
+
+                                                {errorMessage && (
+                                                    <div className="error-feedback">{errorMessage}</div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="success-state">
+                                    <div className="success-icon">
+                                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                            <polyline points="22 4 12 14.01 9 11.01"/>
+                                        </svg>
+                                    </div>
+                                    <h2 className="success-title">Booking confirmed!</h2>
+                                    <p className="success-message">
+                                        Thank you! We've received your booking and will contact you shortly to confirm the details.
+                                    </p>
                                     <button 
-                                        type="button" 
-                                        className="btn-primary" 
+                                        type="button"
                                         onClick={() => {
-                                            if (!selectedService) {
-                                                setErrorMessage('Please select a service first.');
-                                                return;
-                                            }
-                                            if (!formData.address || !formData.date || !formData.time) {
-                                                setErrorMessage('Please fill in all required fields.');
-                                                return;
-                                            }
+                                            setSubmissionSuccess(false);
+                                            setFormStep(1);
+                                            setSelectedService(null);
+                                            setFormData({ address: '', date: '', time: '', name: '', phone: '', email: '', notes: '' });
                                             setErrorMessage('');
-                                            setFormStep(2);
                                         }}
+                                        className="modern-btn-secondary"
                                     >
-                                        Continue
+                                        Book another service
                                     </button>
-
-                                    {errorMessage && (
-                                        <div className="error-message">{errorMessage}</div>
-                                    )}
-                                </>
+                                </div>
                             )}
-
-                            {formStep === 2 && (
-                                <>
-                                    <div className="form-header">
-                                        <button 
-                                            type="button" 
-                                            className="back-btn" 
-                                            onClick={() => setFormStep(1)}
-                                        >
-                                            ← Back
-                                        </button>
-                                        <h2 className="form-title">Your <span className="text-accent">details</span></h2>
-                                    </div>
-
-                                    <div className="form-row">
-                                        <div className="form-group">
-                                            <label className="form-label">
-                                                <User size={18} />
-                                                Full name
-                                            </label>
-                                            <input
-                                                type="text"
-                                                placeholder="John Doe"
-                                                className="form-input"
-                                                value={formData.name}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label className="form-label">
-                                                <Phone size={18} />
-                                                Phone number
-                                            </label>
-                                            <input
-                                                type="tel"
-                                                placeholder="(555) 123-4567"
-                                                className="form-input"
-                                                value={formData.phone}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label className="form-label">
-                                            <Mail size={18} />
-                                            Email <span className="optional">(optional)</span>
-                                        </label>
-                                        <input
-                                            type="email"
-                                            placeholder="john@example.com"
-                                            className="form-input"
-                                            value={formData.email}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                                        />
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label className="form-label">
-                                            <MessageSquare size={18} />
-                                            Special requests <span className="optional">(optional)</span>
-                                        </label>
-                                        <textarea
-                                            rows={4}
-                                            placeholder="Any specific requests or vehicle details..."
-                                            className="form-input"
-                                            value={formData.notes}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                                        />
-                                    </div>
-
-                                    {errorMessage && (
-                                        <div className="error-message">{errorMessage}</div>
-                                    )}
-                                    {successMessage && (
-                                        <div className="success-message">{successMessage}</div>
-                                    )}
-
-                                    <button type="submit" className="btn-primary" disabled={isLoading}>
-                                        {isLoading ? (
-                                            <>
-                                                <Loader2 className="spinner" size={20} />
-                                                Processing...
-                                            </>
-                                        ) : (
-                                            'Confirm booking'
-                                        )}
-                                    </button>
-                                </>
-                            )}
-                        </form>
+                        </div>
                     </div>
 
                     {/* Map on the RIGHT - Full Width */}
