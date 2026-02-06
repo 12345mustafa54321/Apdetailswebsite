@@ -117,18 +117,35 @@ export default function App() {
         return () => clearTimeout(timer);
     }, []);
 
-    // Initialize Google Maps
+    // Initialize Google Maps - only after loading screen is done
     useEffect(() => {
+        if (isAppLoading) return; // Don't initialize until loading is done
+
         const initMap = async () => {
-            if (!mapRef.current || !window.google?.maps) return;
+            console.log('Initializing map...');
+            console.log('Map ref exists:', !!mapRef.current);
+            console.log('Google maps exists:', !!window.google?.maps);
+
+            if (!mapRef.current) {
+                console.error('Map ref not ready');
+                return;
+            }
+
+            if (!window.google?.maps) {
+                console.error('Google Maps not loaded');
+                return;
+            }
 
             try {
+                console.log('Loading Google Maps libraries...');
                 const { Map } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
                 const { Marker } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
                 const { Geocoder } = await google.maps.importLibrary("geocoding") as google.maps.GeocodingLibrary;
 
+                console.log('Libraries loaded, creating geocoder...');
                 geocoderRef.current = new Geocoder();
 
+                console.log('Creating map instance...');
                 mapInstanceRef.current = new Map(mapRef.current, {
                     center: centerLocation,
                     zoom: 12,
@@ -136,9 +153,11 @@ export default function App() {
                     streetViewControl: false,
                     fullscreenControl: false,
                     clickableIcons: false,
-                    gestureHandling: 'greedy'
+                    gestureHandling: 'greedy',
+                    mapTypeId: 'roadmap'
                 });
 
+                console.log('Map created, adding marker...');
                 // Create classic marker with custom icon
                 markerRef.current = new Marker({
                     map: mapInstanceRef.current,
@@ -153,9 +172,12 @@ export default function App() {
                         strokeWeight: 2
                     }
                 });
+
+                console.log('Marker added successfully!');
                 
                 // Initialize Place Autocomplete Element
                 if (addressInputRef.current) {
+                    console.log('Setting up autocomplete...');
                     const { PlaceAutocompleteElement } = await google.maps.importLibrary("places") as google.maps.PlacesLibrary;
                     
                     const placeAutocomplete = new PlaceAutocompleteElement({
@@ -216,26 +238,36 @@ export default function App() {
                         container.insertBefore(placeAutocomplete, addressInputRef.current);
                         placeAutocompleteRef.current = placeAutocomplete;
                     }
+
+                    console.log('Autocomplete setup complete');
                 }
             } catch (error) {
                 console.error('Error initializing Google Maps:', error);
             }
         };
 
-        if (window.google?.maps?.importLibrary) {
-            initMap();
-        } else {
+        // Load Google Maps script if not already loaded
+        if (!window.google?.maps) {
+            console.log('Loading Google Maps script...');
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAxB2l_nyQR0aitOR9H8JHAEzmFkThFU48&libraries=places&loading=async&callback=Function.prototype`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAxB2l_nyQR0aitOR9H8JHAEzmFkThFU48&libraries=places,geocoding,marker&loading=async`;
             script.async = true;
             script.defer = true;
             script.onload = () => {
+                console.log('Google Maps script loaded');
                 // Wait a bit for Google Maps to fully initialize
-                setTimeout(() => initMap(), 100);
+                setTimeout(() => initMap(), 300);
+            };
+            script.onerror = () => {
+                console.error('Failed to load Google Maps script');
             };
             document.head.appendChild(script);
+        } else {
+            console.log('Google Maps already loaded, initializing...');
+            // Give the DOM a moment to render the map div
+            setTimeout(() => initMap(), 100);
         }
-    }, []);
+    }, [isAppLoading]); // Only run when loading screen finishes
 
     const today = new Date().toISOString().split('T')[0];
 
