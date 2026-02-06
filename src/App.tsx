@@ -561,7 +561,7 @@ export default function App() {
                     {/* Logo Image for both Desktop and Mobile */}
                     <img src={heroLogo} alt="AP Details Car Services" className="hero-logo-img" />
                     <p className="hero-subtitle">
-                        Professional car care that comes to you. Servicing within 50 miles.
+                        Professional car care that comes to you. Servicing within 20 miles.
                     </p>
                 </div>
             </section>
