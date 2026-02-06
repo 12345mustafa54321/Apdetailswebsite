@@ -12,6 +12,7 @@ import {
 import { Loader2, MapPin, Calendar, Clock, User, Phone, Mail, MessageSquare } from 'lucide-react';
 import './styles.css';
 import heroLogo from 'figma:asset/8ac00dbb913d177c7d2a825d140dd19b9b5b29e2.png';
+import faviconLogo from 'figma:asset/e5204a642a70c248c8ecda621f114752fa1a9498.png';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -63,6 +64,7 @@ const services = [
 const centerLocation = { lat: 33.172384, lng: -96.713600 };
 
 export default function App() {
+    const [isAppLoading, setIsAppLoading] = useState(true);
     const [selectedService, setSelectedService] = useState<any>(services[0]); // Pre-select Basic Wash
     const [currentLocation, setCurrentLocation] = useState(centerLocation);
     const [formStep, setFormStep] = useState(1);
@@ -85,10 +87,35 @@ export default function App() {
     
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<google.maps.Map | null>(null);
-    const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+    const markerRef = useRef<google.maps.Marker | null>(null);
     const geocoderRef = useRef<google.maps.Geocoder | null>(null);
     const placeAutocompleteRef = useRef<HTMLElement | null>(null);
     const addressInputRef = useRef<HTMLInputElement>(null);
+
+    // Set favicon and page title
+    useEffect(() => {
+        // Set page title
+        document.title = 'AP Details | North Texas';
+        
+        // Set favicon
+        const favicon = document.querySelector('#favicon-placeholder') as HTMLLinkElement;
+        const appleIcon = document.querySelector('#apple-touch-icon-placeholder') as HTMLLinkElement;
+        if (favicon) {
+            favicon.href = faviconLogo;
+        }
+        if (appleIcon) {
+            appleIcon.href = faviconLogo;
+        }
+    }, []);
+
+    // Loading screen
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsAppLoading(false);
+        }, 1500); // 1.5 seconds loading time
+
+        return () => clearTimeout(timer);
+    }, []);
 
     // Initialize Google Maps
     useEffect(() => {
@@ -97,7 +124,7 @@ export default function App() {
 
             try {
                 const { Map } = await google.maps.importLibrary("maps") as google.maps.MapsLibrary;
-                const { AdvancedMarkerElement } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
+                const { Marker } = await google.maps.importLibrary("marker") as google.maps.MarkerLibrary;
                 const { Geocoder } = await google.maps.importLibrary("geocoding") as google.maps.GeocodingLibrary;
 
                 geocoderRef.current = new Geocoder();
@@ -109,25 +136,22 @@ export default function App() {
                     streetViewControl: false,
                     fullscreenControl: false,
                     clickableIcons: false,
-                    gestureHandling: 'greedy',
-                    mapId: 'AP_DETAILS_MAP' // Required for AdvancedMarkerElement
-                    // Removed styles array - map styling is controlled via Cloud Console when mapId is present
+                    gestureHandling: 'greedy'
                 });
 
-                // Create custom marker element
-                const markerElement = document.createElement('div');
-                markerElement.style.width = '20px';
-                markerElement.style.height = '20px';
-                markerElement.style.borderRadius = '50%';
-                markerElement.style.backgroundColor = '#ff6b9d';
-                markerElement.style.border = '2px solid #ffffff';
-                markerElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
-
-                markerRef.current = new AdvancedMarkerElement({
+                // Create classic marker with custom icon
+                markerRef.current = new Marker({
                     map: mapInstanceRef.current,
                     position: centerLocation,
-                    content: markerElement,
-                    title: 'Service Location'
+                    title: 'Service Location',
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 10,
+                        fillColor: '#ff6b9d',
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 2
+                    }
                 });
                 
                 // Initialize Place Autocomplete Element
@@ -452,6 +476,18 @@ export default function App() {
     };
 
     return (
+        <>
+            {/* Loading Screen */}
+            {isAppLoading && (
+                <div className="loading-screen">
+                    <div className="loading-content">
+                        <h1 className="loading-title">AP DETAILS</h1>
+                        <p className="loading-subtitle">The best detailing in North Texas</p>
+                    </div>
+                </div>
+            )}
+
+            {!isAppLoading && (
         <div className="app">
             {/* Navigation */}
             <nav className="nav">
@@ -490,13 +526,8 @@ export default function App() {
                         </svg>
                         Trusted by over 70 clients
                     </div>
-                    {/* Desktop: Logo Image */}
+                    {/* Logo Image for both Desktop and Mobile */}
                     <img src={heroLogo} alt="AP Details Car Services" className="hero-logo-img" />
-                    {/* Mobile: Text */}
-                    <h1 className="hero-title-mobile">
-                        Premium mobile detailing<br />
-                        at <span className="text-accent">your location</span>
-                    </h1>
                     <p className="hero-subtitle">
                         Professional car care that comes to you. Servicing within 50 miles.
                     </p>
@@ -880,5 +911,7 @@ export default function App() {
                 </div>
             </footer>
         </div>
+            )}
+        </>
     );
 }
