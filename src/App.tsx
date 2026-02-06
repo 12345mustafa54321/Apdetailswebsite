@@ -12,7 +12,7 @@ import {
 import { Loader2, MapPin, Calendar, Clock, User, Phone, Mail, MessageSquare } from 'lucide-react';
 import './styles.css';
 import heroLogo from 'figma:asset/8ac00dbb913d177c7d2a825d140dd19b9b5b29e2.png';
-import faviconLogo from 'figma:asset/e5204a642a70c248c8ecda621f114752fa1a9498.png';
+import faviconLogo from 'figma:asset/favicon.png';
 
 // Firebase configuration
 const firebaseConfig = {
