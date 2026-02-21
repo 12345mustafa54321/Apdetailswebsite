@@ -32,32 +32,48 @@ const db = getFirestore(app);
 // Services data
 const services = [
     {
-        id: 'basic-wash',
-        name: 'Basic Wash',
-        price: 49,
-        duration: '1 hour',
-        description: 'Exterior wash, tire shine, and interior vacuum'
+        id: 'basic-interior-detailing',
+        name: 'Basic Interior Detailing',
+        price: 64.99,
+        duration: '1.5 hours',
+        description: 'Interior wash, Fresh fragrance, Protectants, Deep space cleaning'
     },
     {
-        id: 'premium-detail',
-        name: 'Premium Detail',
-        price: 149,
+        id: 'basic-exterior-detailing',
+        name: 'Basic Exterior Detailing',
+        price: 49.99,
+        duration: '1 hour',
+        description: 'Exterior wash, Protectants, Tire shine, Spotless windows'
+    },
+    {
+        id: 'classic-package',
+        name: 'Classic Exterior+Interior Package',
+        price: 99.99,
+        duration: '2.5 hours',
+        description: 'Interior wash, Fresh fragrance, Deep space cleaning, Exterior wash, Tire shine, Spotless windows, Protectants',
+        badge: 'MOST POPULAR'
+    },
+    {
+        id: 'premium-interior-detailing',
+        name: 'Premium Interior Detailing',
+        price: 119.99,
         duration: '3 hours',
-        description: 'Full exterior & interior detail, wax, polish, and deep clean'
+        description: 'Full interior wash, Pet hair removal, Protectants, Heavy stain removal, Leather conditioning'
+    },
+    {
+        id: 'premium-exterior-detailing',
+        name: 'Premium Exterior Detailing',
+        price: 99.99,
+        duration: '2 hours',
+        description: 'Full exterior wash, Paint correction, Protectants, Headlight restoration'
     },
     {
         id: 'ultimate-package',
         name: 'Ultimate Package',
-        price: 299,
+        price: 199.99,
         duration: '5 hours',
-        description: 'Complete detailing with ceramic coating, engine cleaning, and headlight restoration'
-    },
-    {
-        id: 'interior-deep-clean',
-        name: 'Interior Deep Clean',
-        price: 99,
-        duration: '2 hours',
-        description: 'Shampooing, steam cleaning, leather conditioning, and odor removal'
+        description: 'Full exterior+interior wash, Paint correction, Protectants, Pet hair removal, Heavy stain removal, Headlight restoration, Fresh fragrance, Leather conditioning, Deep space cleaning, Spotless windows',
+        badge: 'BEST VALUE'
     }
 ];
 
@@ -561,7 +577,7 @@ export default function App() {
                     {/* Logo Image for both Desktop and Mobile */}
                     <img src={heroLogo} alt="AP Details Car Services" className="hero-logo-img" />
                     <p className="hero-subtitle">
-                        Professional car care that comes to you. Servicing within 20 miles.
+                        Professional car care that comes to you. Servicing within 50 miles.
                     </p>
                 </div>
             </section>
@@ -588,8 +604,8 @@ export default function App() {
                                 <div style={{ flex: 1 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                         <h3 className="service-name">{service.name}</h3>
-                                        {service.id === 'ultimate-package' && (
-                                            <span className="best-deal-badge">Best deal</span>
+                                        {service.badge && (
+                                            <span className="best-deal-badge">{service.badge}</span>
                                         )}
                                     </div>
                                 </div>
