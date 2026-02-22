@@ -35,7 +35,7 @@ const services = [
         id: 'basic-interior-detailing',
         name: 'Basic Interior Detailing',
         price: 64.99,
-        duration: '1.5 hours',
+        duration: '2 hours',
         description: 'Interior wash, Fresh fragrance, Protectants, Deep space cleaning'
     },
     {
@@ -46,10 +46,10 @@ const services = [
         description: 'Exterior wash, Protectants, Tire shine, Spotless windows'
     },
     {
-        id: 'classic-package',
-        name: 'Classic Exterior+Interior Package',
+        id: 'basic-package',
+        name: 'Basic Exterior+Interior Package',
         price: 99.99,
-        duration: '2.5 hours',
+        duration: '3 hours',
         description: 'Interior wash, Fresh fragrance, Deep space cleaning, Exterior wash, Tire shine, Spotless windows, Protectants',
         badge: 'MOST POPULAR'
     },
