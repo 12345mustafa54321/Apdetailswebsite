@@ -39,11 +39,14 @@ if (testimonialsTrack) {
 }
 
 if (heroStage) {
+  let ticking = false;
+
   const updateHeroStage = () => {
-    const introEnd = Math.max(1, heroStage.offsetTop - window.innerHeight * 0.22);
+    const viewportHeight = window.innerHeight;
+    const heroTop = heroStage.getBoundingClientRect().top + window.scrollY;
+    const introEnd = Math.max(1, heroTop - viewportHeight * 0.18);
     const introProgress = Math.max(0, Math.min(1, window.scrollY / introEnd));
     const rect = heroStage.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
     const start = viewportHeight * 0.5;
     const end = -heroStage.offsetHeight * 0.12;
     const rawProgress = (start - rect.top) / (start - end);
@@ -52,11 +55,19 @@ if (heroStage) {
     heroStage.style.setProperty("--car-intro-progress", introProgress.toFixed(3));
     heroStage.classList.toggle("is-revealed", progress > 0.24);
     heroStage.classList.toggle("is-settled", progress > 0.4);
+    ticking = false;
   };
 
-  updateHeroStage();
-  window.addEventListener("scroll", updateHeroStage, { passive: true });
-  window.addEventListener("resize", updateHeroStage);
+  const requestUpdate = () => {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(updateHeroStage);
+  };
+
+  requestUpdate();
+  window.addEventListener("scroll", requestUpdate, { passive: true });
+  window.addEventListener("resize", requestUpdate);
+  window.addEventListener("load", requestUpdate);
 }
 
 if (typewriterText) {
