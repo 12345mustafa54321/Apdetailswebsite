@@ -7,6 +7,7 @@ const typewriterText = document.getElementById("typewriter-text");
 const heroStage = document.getElementById("experience");
 const menuToggle = document.getElementById("menu-toggle");
 const siteNav = document.getElementById("site-nav");
+const testimonialsTrack = document.getElementById("testimonials-track");
 const typewriterWords = [
   "cleaner finish.",
   "refined experience.",
@@ -19,10 +20,10 @@ function setActiveHotspot(target) {
     hotspot.classList.toggle("active", hotspot === target);
   });
 
-  featureTitle.textContent = target.dataset.title;
-  featureCopy.textContent = target.dataset.copy;
-  featureTag.textContent = target.dataset.tag;
-  featureTime.textContent = target.dataset.time;
+  if (featureTitle) featureTitle.textContent = target.dataset.title || "";
+  if (featureCopy) featureCopy.textContent = target.dataset.copy || "";
+  if (featureTag) featureTag.textContent = target.dataset.tag || "";
+  if (featureTime) featureTime.textContent = target.dataset.time || "";
 }
 
 hotspots.forEach((hotspot) => {
@@ -33,28 +34,44 @@ if (hotspots[0]) {
   setActiveHotspot(hotspots[0]);
 }
 
-const testimonialsTrack = document.getElementById("testimonials-track");
-if (testimonialsTrack) {
+if (testimonialsTrack && !testimonialsTrack.dataset.duplicated) {
   testimonialsTrack.innerHTML += testimonialsTrack.innerHTML;
+  testimonialsTrack.dataset.duplicated = "true";
 }
 
 if (heroStage) {
   let ticking = false;
 
   const updateHeroStage = () => {
-    const viewportHeight = window.innerHeight;
-    const heroTop = heroStage.getBoundingClientRect().top + window.scrollY;
-    const introEnd = Math.max(1, heroTop - viewportHeight * 0.18);
-    const introProgress = Math.max(0, Math.min(1, window.scrollY / introEnd));
+    const stageStyles = window.getComputedStyle(heroStage);
+
+    if (stageStyles.display === "none") {
+      heroStage.style.setProperty("--car-intro-progress", "1");
+      heroStage.classList.remove("is-revealed", "is-settled");
+      ticking = false;
+      return;
+    }
+
+    const viewportHeight = Math.max(window.innerHeight, 1);
     const rect = heroStage.getBoundingClientRect();
-    const start = viewportHeight * 0.5;
-    const end = -heroStage.offsetHeight * 0.12;
-    const rawProgress = (start - rect.top) / (start - end);
+    const heroTop = window.scrollY + rect.top;
+    const isCompactViewport = window.innerWidth <= 640;
+    const introStart = Math.max(0, heroTop - viewportHeight * (isCompactViewport ? 0.92 : 1.42));
+    const introDistance = Math.max(1, viewportHeight * (isCompactViewport ? 0.7 : 1.16));
+    const introProgress = Math.max(
+      0,
+      Math.min(1, (window.scrollY - introStart) / introDistance)
+    );
+    const start = viewportHeight * (isCompactViewport ? 0.72 : 0.5);
+    const end = -Math.max(heroStage.offsetHeight, 1) * 0.12;
+    const rawProgress = (start - rect.top) / Math.max(start - end, 1);
     const progress = Math.max(0, Math.min(1, rawProgress));
+    const revealThreshold = isCompactViewport ? 0.12 : 0.24;
+    const settleThreshold = isCompactViewport ? 0.22 : 0.4;
 
     heroStage.style.setProperty("--car-intro-progress", introProgress.toFixed(3));
-    heroStage.classList.toggle("is-revealed", progress > 0.24);
-    heroStage.classList.toggle("is-settled", progress > 0.4);
+    heroStage.classList.toggle("is-revealed", progress > revealThreshold);
+    heroStage.classList.toggle("is-settled", progress > settleThreshold);
     ticking = false;
   };
 
@@ -67,7 +84,17 @@ if (heroStage) {
   requestUpdate();
   window.addEventListener("scroll", requestUpdate, { passive: true });
   window.addEventListener("resize", requestUpdate);
+  window.addEventListener("orientationchange", requestUpdate);
   window.addEventListener("load", requestUpdate);
+
+  if (typeof ResizeObserver !== "undefined") {
+    const resizeObserver = new ResizeObserver(requestUpdate);
+    resizeObserver.observe(heroStage);
+  }
+
+  if (document.fonts && typeof document.fonts.ready?.then === "function") {
+    document.fonts.ready.then(requestUpdate).catch(() => {});
+  }
 }
 
 if (typewriterText) {

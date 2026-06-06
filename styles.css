@@ -340,7 +340,7 @@ button {
 .image-shell {
   position: absolute;
   left: 50%;
-  top: 50%;
+  top: 56%;
   transform: translate(
     -50%,
     calc(-50% - (640px * (1 - var(--car-intro-progress))))
@@ -794,13 +794,73 @@ button {
     font-size: clamp(2.3rem, 10vw, 3.4rem);
   }
 
-  .type-line,
-  .type-caret {
-    display: none;
+  .type-line {
+    display: block;
+    min-height: 1.35em;
+    margin-top: 10px;
   }
 
   .hero-stage {
-    display: none;
+    display: block;
+    min-height: clamp(560px, 86vh, 760px);
+    margin-top: 18px;
+  }
+
+  .hero-stage::before {
+    top: 5%;
+    width: min(100%, 280px);
+    font-size: clamp(2.3rem, 12vw, 4rem);
+    line-height: 0.95;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .car-stage {
+    top: 92px;
+    height: 48vh;
+    min-height: 320px;
+  }
+
+  .image-shell {
+    top: 52%;
+    width: min(560px, calc(100% - 12px));
+    transform: translate(
+      -50%,
+      calc(-50% - (180px * (1 - var(--car-intro-progress))))
+    );
+  }
+
+  .floating-summary {
+    left: 50%;
+    top: auto;
+    bottom: 20px;
+    width: calc(100% - 24px);
+    max-width: 360px;
+    padding: 18px 18px 20px;
+    transform: translate(-50%, 36px);
+  }
+
+  .floating-summary h2 {
+    font-size: 1.15rem;
+  }
+
+  .summary-meta span {
+    font-size: 0.78rem;
+  }
+
+  .hotspot {
+    width: 24px;
+    height: 24px;
+  }
+
+  .hotspot span {
+    width: 10px;
+    height: 10px;
+    box-shadow: 0 0 0 7px rgba(242, 138, 200, 0.16);
+  }
+
+  .hero-stage.is-settled .floating-summary {
+    transform: translate(-50%, 0);
   }
 
   .testimonial-card {
